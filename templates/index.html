@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎰 Барабан тем</title>
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --surface: #141414;
+            --border: #2a2a2a;
+            --text: #f0f0f0;
+            --text-dim: #666;
+            --accent: #ffffff;
+            --glow: rgba(255, 255, 255, 0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Фоновые частицы */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Основной layout */
+        .app-layout {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+            padding: 20px;
+            max-width: 1100px;
+            width: 100%;
+        }
+
+        /* Левая панель — история */
+        .history-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            width: 260px;
+            min-width: 260px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 40px var(--glow);
+            max-height: 85vh;
+            transition: all 0.3s;
+        }
+
+        .history-header {
+            padding: 20px 20px 15px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-header h2 {
+            font-size: 0.75rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            font-weight: 400;
+        }
+
+        .history-count {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            opacity: 0.6;
+            letter-spacing: 2px;
+        }
+
+        .history-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 0;
+            scrollbar-width: thin;
+            scrollbar-color: #333 transparent;
+        }
+
+        .history-list::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .history-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .history-list::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 3px;
+        }
+
+        .history-item {
+            padding: 12px 20px;
+            border-left: 2px solid transparent;
+            transition: all 0.3s;
+            animation: slideIn 0.3s ease-out;
+            position: relative;
+        }
+
+        .history-item:last-child {
+            border-left-color: rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .history-item .topic-title {
+            font-size: 0.8rem;
+            color: var(--text);
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .history-item .topic-meta {
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            margin-top: 4px;
+            letter-spacing: 1px;
+            opacity: 0.6;
+        }
+
+        .history-item .topic-number {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.55rem;
+            color: var(--text-dim);
+            opacity: 0.3;
+            letter-spacing: 1px;
+        }
+
+        .history-empty {
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 0.7rem;
+            opacity: 0.4;
+            letter-spacing: 2px;
+            line-height: 1.8;
+        }
+
+        .history-footer {
+            padding: 15px 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .btn-clear {
+            width: 100%;
+            background: transparent;
+            color: var(--text-dim);
+            border: 1px solid #222;
+            padding: 8px;
+            font-family: inherit;
+            font-size: 0.6rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-radius: 4px;
+        }
+
+        .btn-clear:hover {
+            border-color: #444;
+            color: #999;
+        }
+
+        /* Центральная панель — барабан */
+        .center-panel {
+            flex: 1;
+            text-align: center;
+            min-width: 0;
+        }
+
+        .header {
+            margin-bottom: 35px;
+        }
+
+        .header h1 {
+            font-size: 1rem;
+            letter-spacing: 8px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            font-weight: 400;
+        }
+
+        .header .stats {
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            color: var(--text-dim);
+            margin-top: 8px;
+            opacity: 0.6;
+        }
+
+        /* Корпус барабана */
+        .drum-machine {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 30px 25px;
+            margin-bottom: 35px;
+            box-shadow: 
+                0 0 60px var(--glow),
+                inset 0 0 60px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .drum-machine::before {
+            content: '';
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        .drum-window {
+            background: #000;
+            border: 2px solid #1a1a1a;
+            border-radius: 8px;
+            height: 220px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.8);
+        }
+
+        .drum-window::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40%;
+            background: linear-gradient(
+                to bottom,
+                rgba(255, 255, 255, 0.03) 0%,
+                transparent 100%
+            );
+            pointer-events: none;
+            z-index: 3;
+        }
+        
+        .marker-left,
+        .marker-right {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 0;
+            height: 0;
+            z-index: 5;
+            pointer-events: none;
+        }
+        .marker-left {
+            left: 8px;
+            border-top: 8px solid transparent;
+            border-bottom: 8px solid transparent;
+            border-left: 12px solid rgba(255, 255, 255, 0.6);
+        }
+        .marker-right {
+            right: 8px;
+            border-top: 8px solid transparent;
+            border-bottom: 8px solid transparent;
+            border-right: 12px solid rgba(255, 255, 255, 0.6);
+        }
+
+        .drum-strip {
+            position: absolute;
+            left: 0;
+            right: 0;
+            will-change: transform;
+        }
+
+        .drum-item {
+            height: 220px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: #fff;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.4);
+            white-space: normal;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+            padding: 10px 30px;
+            text-align: center;
+            line-height: 1.3;
+            opacity: 0.35;
+            transition: opacity 0.2s;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .drum-item.active {
+            opacity: 1;
+        }
+
+        .btn-spin {
+            background: transparent;
+            color: var(--text);
+            border: 2px solid #333;
+            padding: 18px 60px;
+            font-family: inherit;
+            font-size: 1rem;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            border-radius: 4px;
+        }
+
+        .btn-spin::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            transition: left 0.5s;
+        }
+
+        .btn-spin:hover:not(:disabled) {
+            border-color: #fff;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-spin:hover:not(:disabled)::before {
+            left: 100%;
+        }
+
+        .btn-spin:active:not(:disabled) {
+            transform: scale(0.96);
+        }
+
+        .btn-spin:disabled {
+            opacity: 0.25;
+            cursor: not-allowed;
+            border-color: #222;
+        }
+
+        .result-panel {
+            margin-top: 30px;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .result-label {
+            font-size: 0.7rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        .result-label.visible { opacity: 0.7; }
+
+        .result-topic {
+            font-size: 1.4rem;
+            letter-spacing: 2px;
+            font-weight: 600;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+
+        .result-topic.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .result-meta {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            opacity: 0;
+            transition: opacity 0.5s 0.2s;
+            letter-spacing: 2px;
+        }
+
+        .result-meta.visible { opacity: 0.5; }
+
+        .hint {
+            position: fixed;
+            bottom: 30px;
+            font-size: 0.65rem;
+            letter-spacing: 3px;
+            color: var(--text-dim);
+            opacity: 0.4;
+        }
+
+        /* Анимация появления элемента истории */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Адаптивность */
+        @media (max-width: 900px) {
+            .app-layout {
+                flex-direction: column-reverse;
+                align-items: center;
+                gap: 20px;
+                padding: 15px;
+            }
+
+            .history-panel {
+                width: 100%;
+                min-width: 100%;
+                max-height: 200px;
+                flex-shrink: 0;
+            }
+
+            .history-list {
+                display: flex;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                overflow-y: hidden;
+                padding: 10px;
+                gap: 8px;
+            }
+
+            .history-item {
+                min-width: 160px;
+                max-width: 200px;
+                flex-shrink: 0;
+                border-left: none;
+                border-bottom: 2px solid transparent;
+                padding: 10px 15px;
+                animation: slideInHorizontal 0.3s ease-out;
+            }
+
+            .history-item:last-child {
+                border-left: none;
+                border-bottom-color: rgba(255, 255, 255, 0.4);
+            }
+
+            .history-item .topic-number {
+                position: static;
+                transform: none;
+                margin-top: 4px;
+            }
+
+            .history-empty {
+                padding: 20px;
+                min-width: 100%;
+            }
+
+            @keyframes slideInHorizontal {
+                from {
+                    opacity: 0;
+                    transform: translateY(10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+        }
+
+        @media (max-width: 500px) {
+            .drum-item {
+                font-size: 1.2rem;
+                padding: 8px 15px;
+                line-height: 1.25;
+                letter-spacing: 0.5px;
+            }
+            .drum-window { height: 180px; }
+            .drum-item { height: 180px; }
+            .btn-spin {
+                padding: 14px 40px;
+                font-size: 0.9rem;
+                letter-spacing: 4px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas class="particles" id="particles"></canvas>
+
+    <div class="app-layout">
+        <!-- Левая панель: История -->
+        <aside class="history-panel" id="historyPanel">
+            <div class="history-header">
+                <h2>История</h2>
+                <span class="history-count" id="historyCount">0</span>
+            </div>
+            <div class="history-list" id="historyList">
+                <div class="history-empty">
+                    Пока пусто<br>
+                    <span style="font-size:0.55rem;">запустите барабан</span>
+                </div>
+            </div>
+            <div class="history-footer">
+                <button class="btn-clear" id="btnClear" title="Очистить историю">
+                    ✕ Очистить
+                </button>
+            </div>
+        </aside>
+
+        <!-- Центральная панель: Барабан -->
+        <main class="center-panel">
+            <div class="header">
+                <h1>Барабан тем</h1>
+                <div class="stats">тем в базе: <span id="topicsCount">—</span></div>
+            </div>
+
+            <div class="drum-machine">
+                <div class="drum-window" id="drumWindow">
+                    <div class="indicator-top"></div>
+                    <div class="indicator-bottom"></div>
+                    <div class="marker-left"></div>
+                    <div class="marker-right"></div>
+                    <div class="drum-strip" id="drumStrip"></div>
+                </div>
+            </div>
+
+            <button class="btn-spin" id="spinBtn">▶ Запустить</button>
+
+            <div class="result-panel">
+                <div class="result-label" id="resultLabel">выпала тема</div>
+                <div class="result-topic" id="resultTopic"></div>
+                <div class="result-meta" id="resultMeta"></div>
+            </div>
+        </main>
+    </div>
+
+    <div class="hint">ПРОБЕЛ &nbsp;или&nbsp; КНОПКА</div>
+
+    <script>
+        // ============================================================
+        // КОНФИГУРАЦИЯ
+        // ============================================================
+        const ITEM_HEIGHT = 220;
+        const TOTAL_STRIP_REPEATS = 5;
+        const SPIN_DURATION_BASE = 3200;
+        const SPIN_DURATION_VARIANCE = 800;
+        const MIN_FULL_ROTATIONS = 2;
+        const HISTORY_STORAGE_KEY = 'wheel_of_topics_history';
+        const MAX_HISTORY_ITEMS = 50;
+
+        // ============================================================
+        // DOM ЭЛЕМЕНТЫ
+        // ============================================================
+        const drumStrip = document.getElementById('drumStrip');
+        const spinBtn = document.getElementById('spinBtn');
+        const resultLabel = document.getElementById('resultLabel');
+        const resultTopic = document.getElementById('resultTopic');
+        const resultMeta = document.getElementById('resultMeta');
+        const topicsCountEl = document.getElementById('topicsCount');
+        const particlesCanvas = document.getElementById('particles');
+        const historyList = document.getElementById('historyList');
+        const historyCount = document.getElementById('historyCount');
+        const btnClear = document.getElementById('btnClear');
+
+        // ============================================================
+        // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+        // ============================================================
+        let topics = [];
+        let totalTopics = 0;
+        let currentVirtualIndex = 0;
+        let isSpinning = false;
+        let history = [];
+
+        // ============================================================
+        // ИСТОРИЯ
+        // ============================================================
+        function loadHistory() {
+            try {
+                const saved = localStorage.getItem(HISTORY_STORAGE_KEY);
+                if (saved) {
+                    history = JSON.parse(saved);
+                } else {
+                    history = [];
+                }
+            } catch (e) {
+                history = [];
+            }
+            renderHistory();
+        }
+
+        function saveHistory() {
+            try {
+                // Ограничиваем размер истории
+                if (history.length > MAX_HISTORY_ITEMS) {
+                    history = history.slice(-MAX_HISTORY_ITEMS);
+                }
+                localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
+            } catch (e) {
+                console.warn('Не удалось сохранить историю:', e);
+            }
+        }
+
+        function addToHistory(topic) {
+            const entry = {
+                id: topic.id,
+                title: topic.title,
+                category: topic.category,
+                difficulty: topic.difficulty,
+                timestamp: new Date().toISOString(),
+                number: history.length + 1
+            };
+            history.push(entry);
+            saveHistory();
+            renderHistory();
+        }
+
+        function clearHistory() {
+            history = [];
+            saveHistory();
+            renderHistory();
+        }
+
+        function renderHistory() {
+            historyCount.textContent = history.length;
+
+            if (history.length === 0) {
+                historyList.innerHTML = `
+                    <div class="history-empty">
+                        Пока пусто<br>
+                        <span style="font-size:0.55rem;">запустите барабан</span>
+                    </div>`;
+                return;
+            }
+
+            // Показываем последние элементы (новые сверху)
+            const itemsToShow = [...history].reverse().slice(0, 20);
+
+            historyList.innerHTML = itemsToShow.map(item => `
+                <div class="history-item">
+                    <div class="topic-title">${escapeHtml(item.title)}</div>
+                    <div class="topic-meta">${escapeHtml(item.category)} · ${escapeHtml(item.difficulty)}</div>
+                    <div class="topic-number">#${item.number}</div>
+                </div>
+            `).join('');
+
+            // Скроллим к началу (последний добавленный элемент)
+            historyList.scrollTop = 0;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ============================================================
+        // ИНИЦИАЛИЗАЦИЯ
+        // ============================================================
+        async function init() {
+            loadHistory();
+
+            try {
+                const response = await fetch('/api/topics');
+                topics = await response.json();
+                totalTopics = topics.length;
+                topicsCountEl.textContent = totalTopics;
+
+                if (totalTopics === 0) {
+                    console.error('В базе нет тем!');
+                    return;
+                }
+
+                buildStrip();
+                centerStrip();
+                initParticles();
+            } catch (error) {
+                console.error('Ошибка загрузки тем:', error);
+                topicsCountEl.textContent = 'ошибка';
+            }
+        }
+
+        // ============================================================
+        // ПОСТРОЕНИЕ ПОЛОСЫ БАРАБАНА
+        // ============================================================
+        function buildStrip() {
+            const repeatedTopics = [];
+            for (let i = 0; i < TOTAL_STRIP_REPEATS; i++) {
+                repeatedTopics.push(...topics);
+            }
+
+            drumStrip.innerHTML = repeatedTopics.map((topic, index) => {
+                const realIndex = index % totalTopics;
+                return `<div class="drum-item" data-real-index="${realIndex}" data-virtual-index="${index}">${escapeHtml(topic.title)}</div>`;
+            }).join('');
+
+            const middleBlock = Math.floor(TOTAL_STRIP_REPEATS / 2);
+            currentVirtualIndex = middleBlock * totalTopics;
+        }
+
+        function centerStrip() {
+            const middleBlock = Math.floor(TOTAL_STRIP_REPEATS / 2);
+            currentVirtualIndex = middleBlock * totalTopics;
+            setPositionInstant(currentVirtualIndex);
+            updateActiveItem();
+        }
+
+        // ============================================================
+        // ПОЗИЦИОНИРОВАНИЕ
+        // ============================================================
+        function setPositionInstant(virtualIndex) {
+            drumStrip.style.transition = 'none';
+            const y = -virtualIndex * ITEM_HEIGHT;
+            drumStrip.style.transform = `translate3d(0, ${y}px, 0)`;
+        }
+
+        function setPositionSmooth(virtualIndex, duration, timingFunction = 'cubic-bezier(0.12, 0.87, 0.25, 1.0)') {
+            drumStrip.style.transition = `transform ${duration}ms ${timingFunction}`;
+            const y = -virtualIndex * ITEM_HEIGHT;
+            drumStrip.style.transform = `translate3d(0, ${y}px, 0)`;
+        }
+
+        function updateActiveItem() {
+            const items = drumStrip.querySelectorAll('.drum-item');
+            items.forEach(item => {
+                const vIndex = parseInt(item.dataset.virtualIndex);
+                if (vIndex === currentVirtualIndex) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+        }
+
+        // ============================================================
+        // НОРМАЛИЗАЦИЯ ИНДЕКСА
+        // ============================================================
+        function normalizeIndex(virtualIndex) {
+            const maxIndex = totalTopics * TOTAL_STRIP_REPEATS;
+            let normalized = virtualIndex % maxIndex;
+            if (normalized < 0) normalized += maxIndex;
+            return normalized;
+        }
+
+        function getRealIndex(virtualIndex) {
+            return ((virtualIndex % totalTopics) + totalTopics) % totalTopics;
+        }
+
+        // ============================================================
+        // ВРАЩЕНИЕ БАРАБАНА
+        // ============================================================
+        async function spin() {
+            if (isSpinning || totalTopics === 0) return;
+
+            isSpinning = true;
+            spinBtn.disabled = true;
+            hideResult();
+
+            try {
+                const response = await fetch('/api/spin-result');
+                const data = await response.json();
+                const targetRealIndex = data.target_index;
+
+                const fullRotations = MIN_FULL_ROTATIONS + Math.floor(Math.random() * 3);
+                const currentRealIndex = getRealIndex(currentVirtualIndex);
+
+                let stepsToTarget = targetRealIndex - currentRealIndex;
+                if (stepsToTarget <= 0) stepsToTarget += totalTopics;
+
+                const totalSteps = fullRotations * totalTopics + stepsToTarget;
+                let targetVirtualIndex = currentVirtualIndex + totalSteps;
+                targetVirtualIndex = normalizeIndex(targetVirtualIndex);
+
+                const duration = SPIN_DURATION_BASE + Math.random() * SPIN_DURATION_VARIANCE;
+
+                setPositionSmooth(targetVirtualIndex, duration);
+
+                await new Promise(resolve => setTimeout(resolve, duration + 50));
+
+                currentVirtualIndex = targetVirtualIndex;
+                setPositionInstant(currentVirtualIndex);
+                updateActiveItem();
+
+                const topic = topics[targetRealIndex];
+                showResult(topic);
+                addToHistory(topic);
+
+            } catch (error) {
+                console.error('Ошибка вращения:', error);
+            } finally {
+                isSpinning = false;
+                spinBtn.disabled = false;
+            }
+        }
+
+        // ============================================================
+        // ОТОБРАЖЕНИЕ РЕЗУЛЬТАТА
+        // ============================================================
+        function showResult(topic) {
+            resultTopic.textContent = topic.title;
+            resultMeta.textContent = `${topic.category} · ${topic.difficulty}`;
+
+            requestAnimationFrame(() => {
+                resultLabel.classList.add('visible');
+                resultTopic.classList.add('visible');
+                resultMeta.classList.add('visible');
+            });
+        }
+
+        function hideResult() {
+            resultLabel.classList.remove('visible');
+            resultTopic.classList.remove('visible');
+            resultMeta.classList.remove('visible');
+        }
+
+        // ============================================================
+        // ФОНОВЫЕ ЧАСТИЦЫ
+        // ============================================================
+        function initParticles() {
+            const ctx = particlesCanvas.getContext('2d');
+            const particles = [];
+            const maxParticles = 50;
+
+            function resize() {
+                particlesCanvas.width = window.innerWidth;
+                particlesCanvas.height = window.innerHeight;
+            }
+            resize();
+            window.addEventListener('resize', resize);
+
+            class Particle {
+                constructor() {
+                    this.reset();
+                }
+                reset() {
+                    this.x = Math.random() * particlesCanvas.width;
+                    this.y = Math.random() * particlesCanvas.height;
+                    this.size = Math.random() * 1.5 + 0.5;
+                    this.speedY = Math.random() * 0.3 + 0.05;
+                    this.opacity = Math.random() * 0.3 + 0.05;
+                }
+                update() {
+                    this.y -= this.speedY;
+                    if (this.y < -10) {
+                        this.y = particlesCanvas.height + 10;
+                        this.x = Math.random() * particlesCanvas.width;
+                    }
+                }
+                draw(ctx) {
+                    ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            for (let i = 0; i < maxParticles; i++) {
+                particles.push(new Particle());
+            }
+
+            function animate() {
+                ctx.clearRect(0, 0, particlesCanvas.width, particlesCanvas.height);
+                particles.forEach(p => {
+                    p.update();
+                    p.draw(ctx);
+                });
+                requestAnimationFrame(animate);
+            }
+
+            animate();
+        }
+
+        // ============================================================
+        // ОБРАБОТЧИКИ СОБЫТИЙ
+        // ============================================================
+        spinBtn.addEventListener('click', spin);
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && !isSpinning) {
+                e.preventDefault();
+                spin();
+            }
+        });
+
+        btnClear.addEventListener('click', () => {
+            if (history.length > 0 && confirm('Очистить всю историю?')) {
+                clearHistory();
+            }
+        });
+
+        function updateItemHeight() {
+            const windowWidth = window.innerWidth;
+            if (windowWidth <= 500 && topics.length > 0) {
+                setPositionInstant(currentVirtualIndex);
+            }
+        }
+        window.addEventListener('resize', updateItemHeight);
+
+        // ============================================================
+        // ЗАПУСК
+        // ============================================================
+        init();
+    </script>
+</body>
+</html>
